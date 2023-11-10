@@ -89,10 +89,10 @@ class Speaker {
       this.certifications.length > 3 ||
       this.#emps.includes(this.employer) ||
       (!this.#oldDomains.includes(emailDomain) &&
-        (
-          this.browser.name !==
+        !(
+          this.browser.name ===
           WebBrowser.BrowserName.InternetExplorer &&
-          this.browser.majorVersion > 9
+          this.browser.majorVersion < 9
         )
       )
     )
