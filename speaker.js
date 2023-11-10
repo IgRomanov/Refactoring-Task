@@ -13,15 +13,20 @@ var WebBrowser = Object.freeze({
 });
 
 class Speaker {
+  #speakerId;
+  #isApproved;
+  #oldTechs;
+  #oldDomains
+  #emps;
   constructor() {
-    this.speakerId = null;
-    this.appr = false;
-    this.ot = ['Cobol', 'Punch Cards', 'Commodore', 'VBScript'];
-    this.domains = ['aol.com', 'hotmail.com', 'prodigy.com', 'CompuServe.com'];
-    this.emps = ['Microsoft', 'Google', 'Fog Creek Software', '37Signals'];
+    this.#speakerId = null;
+    this.#isApproved = false;
+    this.#oldTechs = ['Cobol', 'Punch Cards', 'Commodore', 'VBScript'];
+    this.#oldDomains = ['aol.com', 'hotmail.com', 'prodigy.com', 'CompuServe.com'];
+    this.#emps = ['Microsoft', 'Google', 'Fog Creek Software', '37Signals'];
   }
 
-  checkData() {
+  #checkData() {
     if (!this.firstName.trim()) {
       throw new Error('First Name is required');
     } else if (!this.lastName.trim()) {
@@ -31,7 +36,7 @@ class Speaker {
     }
   }
 
-  calculateFee() {
+  #calculateFee() {
     if (this.exp <= 1) {
       this.registrationFee = 500;
     } else if (this.exp <= 3) {
@@ -45,72 +50,67 @@ class Speaker {
     }
   }
 
-  register = (repository) => {
-    var emailParts = this.email.split('@');
-    var emailDomain = emailParts[emailParts.length - 1];
-    this.checkData()
-    this.isStatusGood =
+  #setSessionApproved() {
+    if (this.sessions.length === 0) {
+      throw new Error("Can't register speaker with no sessions to present.");
+    }
+    for (const session of this.sessions) {
+      for (const tech of this.#oldTechs) {
+        if (session.title.includes(tech) || session.description.includes(tech)) {
+          session.approved = false;
+          break;
+        } else {
+          session.aprroved = true;
+          this.#isApproved = true;
+        }
+      }
+    }
+  }
+
+  #saveSpeaker(repository) {
+    if (this.#isApproved) {
+      this.#calculateFee();
+      try {
+        this.#speakerId = repository.saveSpeaker(this);
+      } catch (e) {
+        throw new Error(e);
+      }
+    } else {
+      throw new Error('No sessions approved.');
+    }
+  }
+
+  #checkStatus() {
+    const emailDomain = this.email.split('@')[1];
+    const isStatusGood = (
+      this.isStatusGood ||
       this.exp > 10 ||
       this.hasBlog ||
       this.certifications.length > 3 ||
-      this.emps.includes(this.employer) ||
-      (!this.domains.includes(emailDomain) &&
-        !(
-          this.browser.name ==
+      this.#emps.includes(this.employer) ||
+      (!this.#oldDomains.includes(emailDomain) &&
+        (
+          this.browser.name !==
           WebBrowser.BrowserName.InternetExplorer &&
-          this.browser.majorVersion < 9
-        ))
-
-    if (this.isStatusGood) {
-      if (this.sessions.length !== 0) {
-        // if (this.sessions.some(session => session.title.includes(tech) || session.description.includes(tech))) {
-        //   session.approved = false;
-        // } else {
-        //   session.aprroved = true;
-        //   this.appr = true;
-        // }
-        
-          for (var tech of this.ot) {
-            if (
-              session.title.includes(tech) ||
-              session.description.includes(tech)
-            ) {
-              session.approved = false;
-              break;
-            } else {
-              session.aprroved = true;
-              this.appr = true;
-            }
-          }
-       
-      } else {
-        throw new Error(
-          "Can't register speaker with no sessions to present."
-        );
-      }
-
-      if (this.appr) {
-
-        this.calculateFee();
-
-        try {
-          this.speakerId = repository.saveSpeaker(this);
-        } catch (e) {
-          //in case the db call fails
-        }
-      } else {
-        throw new Error('No sessions approved.');
-      }
-    } else {
-      throw new Error(
-        "Speaker doesn't meet our abitrary and capricious standards."
-      );
+          this.browser.majorVersion > 9
+        )
+      )
+    )
+    if (!isStatusGood) {
+      throw new Error("Speaker doesn't meet our abitrary and capricious standards.");
     }
-    return this.speakerId;
+  }
+
+  register = (repository) => {
+    this.#checkData();
+    this.#checkStatus();
+    this.#setSessionApproved();
+    this.#saveSpeaker(repository);
+    return this.#speakerId;
   };
 }
 
 module.exports = {
-  Speaker: Speaker,
-  WebBrowser: WebBrowser,
+  Speaker,
+  WebBrowser,
 };
