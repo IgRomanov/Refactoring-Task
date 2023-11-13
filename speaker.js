@@ -1,4 +1,4 @@
-var WebBrowser = {
+var WebBrowser = Object.freeze({
   BrowserName: {
     Unknown: 'Unknown',
     InternetExplorer: 'InternetExplorer',
@@ -10,133 +10,107 @@ var WebBrowser = {
     Konqueror: 'Konqueror',
     Linx: 'Linx',
   },
-};
-Object.freeze(WebBrowser);
+});
 
-function Speaker() {
-  var Speaker = this;
+class Speaker {
+  #speakerId;
+  #isApproved;
+  #oldTechs;
+  #oldDomains
+  #emps;
+  constructor() {
+    this.#speakerId = null;
+    this.#isApproved = false;
+    this.#oldTechs = ['Cobol', 'Punch Cards', 'Commodore', 'VBScript'];
+    this.#oldDomains = ['aol.com', 'hotmail.com', 'prodigy.com', 'CompuServe.com'];
+    this.#emps = ['Microsoft', 'Google', 'Fog Creek Software', '37Signals'];
+  }
 
-  //Register a speaker and return speakerID
-  this.register = function (repository) {
-    //let's init some variables
-    var speakerId = null;
-    var good = false;
-    var appr = false;
+  #checkData() {
+    if (!this.firstName.trim()) {
+      throw new Error('First Name is required');
+    } else if (!this.lastName.trim()) {
+      throw new Error('Last Name is required');
+    } else if (!this.email.trim()) {
+      throw new Error('Email is required');
+    }
+  }
 
-    //var nt = ["Angular 8", ".Net Core 3", "NodeJs", "TypeScript, "Kotlin"];
-    var ot = ['Cobol', 'Punch Cards', 'Commodore', 'VBScript'];
+  #calculateFee() {
+    if (this.exp <= 1) {
+      this.registrationFee = 500;
+    } else if (this.exp <= 3) {
+      this.registrationFee = 250;
+    } else if (this.exp <= 5) {
+      this.registrationFee = 100;
+    } else if (this.exp <= 9) {
+      this.registrationFee = 50;
+    } else {
+      this.registrationFee = 0;
+    }
+  }
 
-    //DEFECT #5274 weren't filtering out prodigy domain so I added it.
-    var domains = ['aol.com', 'hotmail.com', 'prodigy.com', 'CompuServe.com'];
-
-    if (Speaker.firstName !== null && Speaker.firstName.trim() !== '') {
-      if (Speaker.lastName !== null && Speaker.lastName.trim() !== '') {
-        if (Speaker.email !== null && Speaker.email.trim() !== '') {
-          //list of employers
-          var emps = ['Microsoft', 'Google', 'Fog Creek Software', '37Signals'];
-
-          //DFCT #838 Jimmy
-          //We're now requiring 3 certificatons so I changes the hard coded number
-          good =
-            Speaker.exp > 10 ||
-            Speaker.hasBlog ||
-            Speaker.certifications.length > 3 ||
-            emps.indexOf(Speaker.employer) !== -1;
-
-          if (!good) {
-            //need to get just the domain from the email
-            var emailParts = Speaker.email.split('@');
-            var emailDomain = emailParts[emailParts.length - 1];
-            if (
-              domains.indexOf(emailDomain) === -1 &&
-              !(
-                Speaker.browser.name ==
-                  WebBrowser.BrowserName.InternetExplorer &&
-                Speaker.browser.majorVersion < 9
-              )
-            ) {
-              good = true;
-            }
-          }
-
-          if (good) {
-            //DEFECT #5013 CO 1/12/2012
-            //We weren't requiring at least one session
-            if (Speaker.sessions.length !== 0) {
-              for (var session of Speaker.sessions) {
-                //for (var tech of nt)
-                //{
-                //    if (session.title.indexOf(tech) !== -1)
-                //    {
-                //        session.approved = true;
-                //        break;
-                //    }
-                //}
-                for (var tech of ot) {
-                  if (
-                    session.title.indexOf(tech) !== -1 ||
-                    session.description.indexOf(tech) !== -1
-                  ) {
-                    session.approved = false;
-                    break;
-                  } else {
-                    session.aprroved = true;
-                    appr = true;
-                  }
-                }
-              }
-            } else {
-              throw new Error(
-                "Can't register speaker with no sessions to present."
-              );
-            }
-
-            if (appr) {
-              //if we got this far, the speaker is approved
-              //let's go ahead and register him/her now.
-              //First, let's calculate the registration fee.
-              //More experienced speakers pay a lower fee.
-              if (Speaker.exp <= 1) {
-                Speaker.registrationFee = 500;
-              } else if (Speaker.exp >= 2 && Speaker.exp <= 3) {
-                Speaker.registrationFee = 250;
-              } else if (Speaker.exp >= 4 && Speaker.exp <= 5) {
-                Speaker.registrationFee = 100;
-              } else if (Speaker.exp >= 6 && Speaker.exp <= 9) {
-                Speaker.registrationFee = 50;
-              } else {
-                Speaker.registrationFee = 0;
-              }
-
-              //Now, save the speaker and sessions to the db.
-              try {
-                speakerId = repository.saveSpeaker(this);
-              } catch (e) {
-                //in case the db call fails
-              }
-            } else {
-              throw new Error('No sessions approved.');
-            }
-          } else {
-            throw new Error(
-              "Speaker doesn't meet our abitrary and capricious standards."
-            );
-          }
+  #setSessionApproved() {
+    if (this.sessions.length === 0) {
+      throw new Error("Can't register speaker with no sessions to present.");
+    }
+    for (const session of this.sessions) {
+      for (const tech of this.#oldTechs) {
+        if (session.title.includes(tech) || session.description.includes(tech)) {
+          session.approved = false;
+          break;
         } else {
-          throw new Error('Email is required');
+          session.aprroved = true;
+          this.#isApproved = true;
         }
-      } else {
-        throw new Error('Last Name is required');
+      }
+    }
+  }
+
+  #saveSpeaker(repository) {
+    if (this.#isApproved) {
+      this.#calculateFee();
+      try {
+        this.#speakerId = repository.saveSpeaker(this);
+      } catch (e) {
+        throw new Error(e);
       }
     } else {
-      throw new Error('First Name is required');
+      throw new Error('No sessions approved.');
     }
+  }
 
-    return speakerId;
+  #checkStatus() {
+    const emailDomain = this.email.split('@')[1];
+    const isStatusGood = (
+      this.isStatusGood ||
+      this.exp > 10 ||
+      this.hasBlog ||
+      this.certifications.length > 3 ||
+      this.#emps.includes(this.employer) ||
+      (!this.#oldDomains.includes(emailDomain) &&
+        !(
+          this.browser.name ===
+          WebBrowser.BrowserName.InternetExplorer &&
+          this.browser.majorVersion < 9
+        )
+      )
+    )
+    if (!isStatusGood) {
+      throw new Error("Speaker doesn't meet our abitrary and capricious standards.");
+    }
+  }
+
+  register = (repository) => {
+    this.#checkData();
+    this.#checkStatus();
+    this.#setSessionApproved();
+    this.#saveSpeaker(repository);
+    return this.#speakerId;
   };
 }
 
 module.exports = {
-  Speaker: Speaker,
-  WebBrowser: WebBrowser,
+  Speaker,
+  WebBrowser,
 };
